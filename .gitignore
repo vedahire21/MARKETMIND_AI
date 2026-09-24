@@ -1,0 +1,26 @@
+# Node dependencies
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Build outputs
+dist/
+build/
+.vite/
+
+# Environment variables
+.env
+.env.local
+.env.production
+
+# Database & IDE
+*.sqlite
+*.sqlite-journal
+.vscode/
+.idea/
+.DS_Store
+
+# Docker & local data
+localstack_data/
+postgres_data/
+redis_data/
