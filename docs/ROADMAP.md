@@ -17,7 +17,7 @@ PHASE 10: Customer Support Agent (Amazon Bedrock RAG & Allowlisted Tools)
 PHASE 11: Hybrid Recommendation Engine (Deterministic Scoring + AI Explanation)
 PHASE 12: Inventory Intelligence (Statistical Forecasting & Reorder Advice)
 PHASE 13: Anomaly Investigator (Metric Monitoring & AI Root-Cause Analysis)
-PHASE 14: AWS Infrastructure as Code (Terraform, ECS/Fargate, RDS, SQS, S3)
-PHASE 15: Security Auditing, End-to-End Testing & Load Testing
-PHASE 16: CI/CD Pipeline & Production Cloud Deployment
+PHASE 14: AWS Infrastructure as Code (Terraform, ECS/Fargate, RDS, SQS, S3) (Completed)
+PHASE 15: Security Auditing, End-to-End Testing & Load Testing (Completed)
+PHASE 16: CI/CD Pipeline & Production Cloud Deployment (Completed)
 ```

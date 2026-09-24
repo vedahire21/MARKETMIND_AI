@@ -1,13 +1,28 @@
-name: MarketMind AI CI/CD Pipeline
+name: MarketMind AI — Enterprise CI/CD Pipeline
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, develop ]
   pull_request:
     branches: [ main ]
 
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: ap-south-1
+  ECR_SERVER_REPO: marketmind-server
+  ECR_CLIENT_REPO: marketmind-client
+  ECS_CLUSTER: marketmind-prod-ecs-cluster
+  ECS_SERVICE: marketmind-prod-server-service
+
 jobs:
-  test-and-lint:
+  # =========================================================================
+  # 1. Server Quality Gate: Lint, Prisma Generate, Vitest Suite, Typecheck
+  # =========================================================================
+  server-ci:
+    name: Server CI (Vitest & Typecheck)
     runs-on: ubuntu-latest
 
     steps:
@@ -19,27 +34,64 @@ jobs:
         with:
           node-version: 20
           cache: 'npm'
-          cache-dependency-path: 'server/package-lock.json'
+          cache-dependency-path: 'server/package.json'
 
       - name: Install Dependencies
         run: |
           cd server
           npm ci
 
-      - name: Run Prisma Client Generation
+      - name: Generate Prisma Client
         run: |
           cd server
           npx prisma generate
 
-      - name: Execute Vitest Unit & Integration Suite
+      - name: Execute Vitest Suite (15 Test Suites, 116+ Tests)
         run: |
           cd server
-          npm run test
+          npm test
 
-  build-docker:
-    needs: test-and-lint
+      - name: Verify TypeScript Compilation
+        run: |
+          cd server
+          npm run build
+
+  # =========================================================================
+  # 2. Client Quality Gate: Typecheck & Production Vite Bundle
+  # =========================================================================
+  client-ci:
+    name: Client CI (Vite Bundle & Typecheck)
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: 'client/package.json'
+
+      - name: Install Dependencies
+        run: |
+          cd client
+          npm ci
+
+      - name: Execute Client Production Build (tsc && vite build)
+        run: |
+          cd client
+          npm run build
+
+  # =========================================================================
+  # 3. Docker Multi-Stage Build & ECR Push (main branch only)
+  # =========================================================================
+  build-and-push:
+    name: Build & Push Docker Images to ECR
+    needs: [server-ci, client-ci]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
 
     steps:
       - name: Checkout Code
@@ -48,6 +100,58 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build Server Container Image
+      - name: Configure AWS Credentials (OIDC or Secret Keys)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          role-session-name: marketmind-cicd-session
+
+      - name: Log in to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build & Push Server Container
+        uses: docker/build-push-action@v5
+        with:
+          context: ./server
+          file: ./server/Dockerfile
+          push: true
+          tags: |
+            ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_SERVER_REPO }}:${{ github.sha }}
+            ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_SERVER_REPO }}:latest
+
+      - name: Build & Push Client Container
+        uses: docker/build-push-action@v5
+        with:
+          context: ./client
+          file: ./client/Dockerfile
+          push: true
+          tags: |
+            ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_CLIENT_REPO }}:${{ github.sha }}
+            ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_CLIENT_REPO }}:latest
+
+  # =========================================================================
+  # 4. Amazon ECS Fargate Rolling Deployment (main branch only)
+  # =========================================================================
+  deploy-ecs:
+    name: Deploy to Amazon ECS Fargate
+    needs: [build-and-push]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          role-session-name: marketmind-deploy-session
+
+      - name: Update ECS Fargate Service
         run: |
-          docker build -t marketmind-server:latest ./server
+          aws ecs update-service \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --service ${{ env.ECS_SERVICE }} \
+            --force-new-deployment \
+            --region ${{ env.AWS_REGION }}

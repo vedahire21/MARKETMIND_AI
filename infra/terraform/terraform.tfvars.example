@@ -1,0 +1,29 @@
+# =============================================================================
+# MarketMind AI — Terraform Variables Example
+# =============================================================================
+# Copy this file to terraform.tfvars and fill in your values:
+#   cp terraform.tfvars.example terraform.tfvars
+#
+# NEVER commit terraform.tfvars to version control.
+# =============================================================================
+
+aws_region  = "us-east-1"
+environment = "production"
+
+# RDS PostgreSQL Credentials
+db_username = "marketmind_admin"
+db_password = "REPLACE_WITH_STRONG_PASSWORD"
+
+# ECS Fargate Sizing
+app_port      = 5000
+server_cpu    = 512   # 0.5 vCPU
+server_memory = 1024  # 1 GB
+desired_count = 2
+
+# Auto-Scaling
+min_capacity = 1
+max_capacity = 4
+
+# Optional: Custom Domain + TLS (leave empty to skip)
+domain_name     = ""
+certificate_arn = ""

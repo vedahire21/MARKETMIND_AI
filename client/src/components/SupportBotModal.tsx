@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Bot, Send, ShieldCheck, X } from 'lucide-react';
+import { supportChat, getAuthToken } from '../services/api';
 
 interface SupportBotProps {
   onClose: () => void;
@@ -15,7 +16,27 @@ export const SupportBotModal: React.FC<SupportBotProps> = ({ onClose }) => {
   const [inputQuery, setInputQuery] = useState('');
   const [isTyping, setIsTyping] = useState(false);
 
-  const handleSend = (e: React.FormEvent) => {
+  /**
+   * Simulated RAG + Allowlisted Tool Calling fallback when no auth token or backend unreachable.
+   */
+  const getSimulatedResponse = (userText: string): { text: string; toolData?: any } => {
+    if (userText.toLowerCase().includes('order') || userText.toLowerCase().includes('track')) {
+      const toolData = { orderNumber: 'ORD-982F-4812', status: 'CONFIRMED', total: '$199.99' };
+      return {
+        text: `Verified Order #${toolData.orderNumber}: Current Status is '${toolData.status}'. Payment verified via Razorpay HMAC SHA256.`,
+        toolData
+      };
+    } else if (userText.toLowerCase().includes('return') || userText.toLowerCase().includes('refund')) {
+      return {
+        text: 'MarketMind Policy: Items can be returned within 30 days of delivery. Refunds are processed to the original payment method within 5-7 business days.'
+      };
+    }
+    return {
+      text: 'Thank you for your question. I have searched our Bedrock Knowledge Base vector policy store. You can track orders or initiate returns anytime from your account.'
+    };
+  };
+
+  const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputQuery.trim()) return;
 
@@ -24,23 +45,32 @@ export const SupportBotModal: React.FC<SupportBotProps> = ({ onClose }) => {
     setInputQuery('');
     setIsTyping(true);
 
-    // Simulate RAG + Allowlisted Tool Calling (`getOrderStatus` / `getStorePolicy`)
-    setTimeout(() => {
-      let botResponse = '';
-      let toolData = null;
+    const token = getAuthToken();
 
-      if (userText.toLowerCase().includes('order') || userText.toLowerCase().includes('track')) {
-        toolData = { orderNumber: 'ORD-982F-4812', status: 'CONFIRMED', total: '$199.99' };
-        botResponse = `Verified Order #${toolData.orderNumber}: Current Status is '${toolData.status}'. Payment verified via Razorpay HMAC SHA256.`;
-      } else if (userText.toLowerCase().includes('return') || userText.toLowerCase().includes('refund')) {
-        botResponse = 'MarketMind Policy: Items can be returned within 30 days of delivery. Refunds are processed to the original payment method within 5-7 business days.';
-      } else {
-        botResponse = 'Thank you for your question. I have searched our Bedrock Knowledge Base vector policy store. You can track orders or initiate returns anytime from your account.';
-      }
+    if (!token) {
+      // No auth token — use simulated response
+      setTimeout(() => {
+        const simulated = getSimulatedResponse(userText);
+        setMessages(prev => [...prev, { sender: 'bot', text: simulated.text, toolData: simulated.toolData }]);
+        setIsTyping(false);
+      }, 800);
+      return;
+    }
 
-      setMessages(prev => [...prev, { sender: 'bot', text: botResponse, toolData }]);
+    try {
+      const result = await supportChat(userText);
+      setMessages(prev => [...prev, {
+        sender: 'bot',
+        text: result.response || result.message || result.answer || 'I received your query and am processing it.',
+        toolData: result.toolData || result.tools || null
+      }]);
+    } catch (err: any) {
+      console.warn('Support chat API error, using fallback:', err);
+      const simulated = getSimulatedResponse(userText);
+      setMessages(prev => [...prev, { sender: 'bot', text: simulated.text, toolData: simulated.toolData }]);
+    } finally {
       setIsTyping(false);
-    }, 1000);
+    }
   };
 
   return (

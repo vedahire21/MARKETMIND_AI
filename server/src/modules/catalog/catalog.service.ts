@@ -105,8 +105,9 @@ export class CatalogService {
     return variant;
   }
 
-  static async getProducts(query: ProductQueryInput) {
-    const { search, categoryId, sellerId, minPrice, maxPrice, status, page, limit, sortBy, sortOrder } = query;
+  static async getProducts(rawQuery: any) {
+    const query = ProductQuerySchema.parse(rawQuery || {});
+    const { search, categoryId, sellerId, minPrice, maxPrice, status, page = 1, limit = 20, sortBy = 'createdAt', sortOrder = 'desc' } = query;
     const skip = (page - 1) * limit;
 
     const where: any = {};

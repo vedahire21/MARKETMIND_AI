@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { CatalogController } from './catalog.controller';
-import { validateSchema } from '../../shared/validate';
+import { validateSchema, validateQuery } from '../../shared/validate';
 import { authenticateJWT, requireRole } from '../../shared/authMiddleware';
 import { CreateCategorySchema, CreateProductSchema, CreateVariantSchema, UpdateProductStatusSchema, ProductQuerySchema } from './catalog.schema';
 
@@ -8,7 +8,7 @@ const router = Router();
 
 // Public Routes
 router.get('/categories', CatalogController.getCategories);
-router.get('/products', validateSchema(ProductQuerySchema), CatalogController.getProducts);
+router.get('/products', validateQuery(ProductQuerySchema), CatalogController.getProducts);
 router.get('/products/:slug', CatalogController.getProductBySlug);
 
 // Protected Admin Routes
