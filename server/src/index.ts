@@ -3,6 +3,8 @@ import cors from 'cors';
 import helmet from 'helmet';
 import dotenv from 'dotenv';
 
+import authRoutes from './modules/auth/auth.routes';
+
 dotenv.config();
 
 const app = express();
@@ -11,6 +13,9 @@ const PORT = process.env.PORT || 5000;
 app.use(helmet());
 app.use(cors({ origin: process.env.CLIENT_URL || 'http://localhost:5173', credentials: true }));
 app.use(express.json());
+
+// Routes
+app.use('/api/v1/auth', authRoutes);
 
 // Healthcheck Route
 app.get('/health', (req: Request, res: Response) => {
