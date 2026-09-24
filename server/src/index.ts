@@ -7,6 +7,7 @@ import authRoutes from './modules/auth/auth.routes';
 import catalogRoutes from './modules/catalog/catalog.routes';
 import cartRoutes from './modules/cart/cart.routes';
 import ordersRoutes from './modules/orders/orders.routes';
+import paymentsRoutes from './modules/payments/payments.routes';
 
 dotenv.config();
 
@@ -22,6 +23,7 @@ app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/catalog', catalogRoutes);
 app.use('/api/v1/cart', cartRoutes);
 app.use('/api/v1/orders', ordersRoutes);
+app.use('/api/v1/payments', paymentsRoutes);
 
 // Healthcheck Route
 app.get('/health', (req: Request, res: Response) => {
