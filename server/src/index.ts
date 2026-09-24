@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import dotenv from 'dotenv';
 
 import authRoutes from './modules/auth/auth.routes';
+import catalogRoutes from './modules/catalog/catalog.routes';
 
 dotenv.config();
 
@@ -16,6 +17,7 @@ app.use(express.json());
 
 // Routes
 app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/catalog', catalogRoutes);
 
 // Healthcheck Route
 app.get('/health', (req: Request, res: Response) => {
