@@ -1,0 +1,53 @@
+name: MarketMind AI CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-and-lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: 'server/package-lock.json'
+
+      - name: Install Dependencies
+        run: |
+          cd server
+          npm ci
+
+      - name: Run Prisma Client Generation
+        run: |
+          cd server
+          npx prisma generate
+
+      - name: Execute Vitest Unit & Integration Suite
+        run: |
+          cd server
+          npm run test
+
+  build-docker:
+    needs: test-and-lint
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Server Container Image
+        run: |
+          docker build -t marketmind-server:latest ./server
