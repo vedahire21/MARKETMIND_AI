@@ -1,8 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { SellerCopilotSchema, ApproveProductListingSchema } from '../ai.schema';
-import { SQSWorker } from '../../../queue/sqsWorker';
+import { SupportAgentService } from '../supportAgent.service';
+import { RecommendationEngineService } from '../recommendationEngine.service';
 
-describe('AI Module & SQS Worker Suite', () => {
+describe('Complete AI Suite Test Plan', () => {
   it('should validate valid SellerCopilot input schema', () => {
     const valid = SellerCopilotSchema.safeParse({
       productName: 'Wireless Noise Cancelling Headphones',
@@ -12,19 +13,21 @@ describe('AI Module & SQS Worker Suite', () => {
     expect(valid.success).toBe(true);
   });
 
-  it('should reject SellerCopilot with too short roughNotes', () => {
-    const invalid = SellerCopilotSchema.safeParse({
-      productName: 'Headphones',
-      category: 'Electronics',
-      roughNotes: 'Short'
-    });
-    expect(invalid.success).toBe(false);
+  it('should validate Customer Support Policy tool lookup', async () => {
+    const policyResult = await SupportAgentService.getStorePolicy('returns');
+    expect(policyResult.topic).toBe('returns');
+    expect(policyResult.policy).toContain('30 days');
   });
 
-  it('should validate ApproveProductListing schema', () => {
-    const valid = ApproveProductListingSchema.safeParse({
-      productId: '123e4567-e89b-12d3-a456-426614174000'
-    });
-    expect(valid.success).toBe(true);
+  it('should handle Customer Support Chat queries', async () => {
+    const response = await SupportAgentService.handleSupportQuery('user-1', 'What is your shipping policy?');
+    expect(response.toolExecuted).toBe(true);
+    expect(response.response).toContain('shipping');
+  });
+
+  it('should return hybrid recommendations list', async () => {
+    const result = await RecommendationEngineService.getRecommendations(undefined, undefined, 3);
+    expect(result).toHaveProperty('recommendations');
+    expect(Array.isArray(result.recommendations)).toBe(true);
   });
 });

@@ -6,10 +6,18 @@ import { SellerCopilotSchema } from './ai.schema';
 
 const router = Router();
 
-router.use(authenticateJWT);
-router.use(requireRole(['SELLER', 'ADMIN']));
+// Public Routes
+router.get('/recommendations', AIController.getRecommendations);
 
-router.post('/seller-copilot/generate', validateSchema(SellerCopilotSchema), AIController.generateListing);
-router.post('/seller-copilot/approve/:productId', AIController.approveListing);
+// Authenticated Routes
+router.post('/support/chat', authenticateJWT, AIController.supportChat);
+
+// Seller Routes
+router.post('/seller-copilot/generate', authenticateJWT, requireRole(['SELLER', 'ADMIN']), validateSchema(SellerCopilotSchema), AIController.generateListing);
+router.post('/seller-copilot/approve/:productId', authenticateJWT, requireRole(['SELLER', 'ADMIN']), AIController.approveListing);
+router.get('/inventory/forecast', authenticateJWT, requireRole(['SELLER', 'ADMIN']), AIController.getInventoryForecast);
+
+// Admin Routes
+router.get('/anomalies/investigate', authenticateJWT, requireRole(['ADMIN']), AIController.investigateAnomalies);
 
 export default router;
